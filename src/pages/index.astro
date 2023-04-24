@@ -1,0 +1,100 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MoneyCard from '../components/MoneyCard.astro';
+---
+
+<Layout title='Currency Converter'>
+  <main
+    class='bg-light flex flex-col md:flex-row gap-20 p-12 md:p-20 rounded-lg shadow-lg container xl:max-w-6xl mx-auto'
+  >
+    <section class='flex-1 max-w-[50%] mx-auto'>
+      <h1 class='font-bold text-lg'>Currency converter</h1>
+      <hr class='mt-4 mb-6' />
+      <p class='text-sm text-brown font-medium max-w-prose'>
+        Calcula el equivalente, de acuerdo al salario minimo Colombiano <span
+          id='salaryCop'
+          class='font-medium text-dark'></span> vs el salario minimo en Portugal <span
+          id='salaryEur'
+          class='font-medium text-dark'></span>
+      </p>
+      <div class='mt-10 flex flex-col justify-center items-center'>
+        <MoneyCard>
+          <input
+            class='appearance-none flex-1 font-normal text-base px-3 py-2 border border-gray-300 rounded-md outline-none placeholder:font-light placeholder:text-sm visited:invalid:border-red-500 visited:invalid:animate-pulse'
+            type='number'
+            pattern='[0-9]+'
+            placeholder='Ingresa el monto a comparar'
+            required
+          />
+          <span class='text-lg font-semibold absolute right-6 bg-white top-1/2 -translate-y-1/2 pr-4'>EUR</span>
+          <div class='validation'></div>
+        </MoneyCard>
+        <button class='bg-white rounded-full shadow-lg p-1 w-8 h-8 -my-0.5 border z-10'>
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            fill='none'
+            viewBox='0 0 24 24'
+            stroke-width='1.5'
+            stroke='currentColor'
+            class='w-full h-full'
+          >
+            <path
+              stroke-linecap='round'
+              stroke-linejoin='round'
+              d='M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5'></path>
+          </svg>
+        </button>
+        <MoneyCard>
+          <span class='px-3 text-lg font-semibold' id='result'></span>
+          <span class='text-lg font-semibold ml-auto pr-5'>COP</span>
+        </MoneyCard>
+        <button
+          id='converted'
+          class='bg-dark-blue text-white uppercase text-sm font-medium w-fit px-8 py-2 rounded shadow self-start mt-4 transition-all transform scale-100 hover:bg-opacity-95 active:scale-95'
+          >Calcular</button
+        >
+      </div>
+    </section>
+
+    <section class='flex-1 hidden'>
+      <div class='hidden'>
+        <h1 class='font-bold text-lg'>Currency converter</h1>
+        <hr class='mt-4 mb-6' />
+        <p class='text-sm text-brown font-medium'>
+          Based on the exchange rate of minimum salary of Colombia <span class='font-medium text-dark'>$1.150.000</span>
+        </p>
+      </div>
+    </section>
+  </main>
+</Layout>
+<script>
+  import {salaryCOP, salaryEUR} from '../db/data';
+
+  const locale = 'es-CO';
+  const options = {
+    style: 'currency',
+    currency: 'COP',
+  };
+  const optionsEUR = {
+    style: 'currency',
+    currency: 'EUR',
+  };
+  const formatter = new Intl.NumberFormat(locale, options);
+  const formatterEUR = new Intl.NumberFormat(locale, optionsEUR);
+  const salaryCop = document.querySelector('#salaryCop');
+  const salaryEur = document.querySelector('#salaryEur');
+
+  salaryEur.innerHTML = formatterEUR.format(salaryEUR);
+  salaryCop.innerHTML = formatter.format(salaryCOP);
+
+  const result = document.querySelector('#result');
+  const btn = document.querySelector('#converted');
+  const input = document.querySelector('input');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const value = input.value;
+    if (!value) return;
+
+    result.innerHTML = formatter.format((Number(value) / salaryEUR) * salaryCOP);
+  });
+</script>
