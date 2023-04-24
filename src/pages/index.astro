@@ -1,15 +1,16 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import MoneyCard from '../components/MoneyCard.astro';
+import MoneyCard from '@components/MoneyCard.astro';
+import SectionTitle from '@components/SectionTitle.astro';
+import SwapBtn from '@components/SwapBtn.astro';
+import Layout from '@layouts/Layout.astro';
 ---
 
 <Layout title='Currency Converter'>
   <main
-    class='bg-light flex flex-col md:flex-row gap-20 p-12 md:p-20 rounded-lg shadow-lg container xl:max-w-6xl mx-auto'
+    class='bg-light flex flex-col md:flex-row gap-20 py-12 px-6 md:p-20 rounded-lg shadow-lg container xl:max-w-6xl mx-auto'
   >
     <section class='flex-1 md:max-w-[50%] mx-auto'>
-      <h1 class='font-bold text-lg'>Currency converter</h1>
-      <hr class='mt-4 mb-6' />
+      <SectionTitle text='Currency equivalent' />
       <p class='text-sm text-brown font-medium max-w-prose'>
         Calcula el equivalente, de acuerdo al salario minimo Colombiano <span
           id='salaryCop'
@@ -26,27 +27,16 @@ import MoneyCard from '../components/MoneyCard.astro';
             placeholder='Ingresa el monto a comparar'
             required
           />
-          <span class='text-lg font-semibold absolute right-6 bg-white top-1/2 -translate-y-1/2 pr-4'>EUR</span>
+          <span
+            id='principalCurrency'
+            class='text-lg font-semibold absolute right-6 bg-white top-1/2 -translate-y-1/2 pr-4'>EUR</span
+          >
           <div class='validation'></div>
         </MoneyCard>
-        <button class='bg-white rounded-full shadow-lg p-1 w-8 h-8 -my-0.5 border z-10'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            fill='none'
-            viewBox='0 0 24 24'
-            stroke-width='1.5'
-            stroke='currentColor'
-            class='w-full h-full'
-          >
-            <path
-              stroke-linecap='round'
-              stroke-linejoin='round'
-              d='M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5'></path>
-          </svg>
-        </button>
+        <SwapBtn />
         <MoneyCard>
           <span class='px-3 text-lg font-semibold' id='result'></span>
-          <span class='text-lg font-semibold ml-auto pr-5'>COP</span>
+          <span id='secondCurrency' class='text-lg font-semibold ml-auto pr-5'>COP</span>
         </MoneyCard>
         <button
           id='converted'
@@ -56,19 +46,25 @@ import MoneyCard from '../components/MoneyCard.astro';
       </div>
     </section>
 
-    <section class='flex-1 hidden'>
-      <div class='hidden'>
-        <h1 class='font-bold text-lg'>Currency converter</h1>
-        <hr class='mt-4 mb-6' />
-        <p class='text-sm text-brown font-medium'>
-          Based on the exchange rate of minimum salary of Colombia <span class='font-medium text-dark'>$1.150.000</span>
-        </p>
-      </div>
+    <section class='flex-1'>
+      <SectionTitle text='Currency conversion' />
+      <MoneyCard>
+        <div class='w-full'>
+          <SectionTitle text='Moneda Principal COP' />
+          <div class='grid grid-cols-3 gap-2 text-brown font-normal text-xs'>
+            <span>Monto</span>
+            <span>TRM</span>
+            <span>Total</span>
+          </div>
+          <hr class='my-2' />
+          <div id='table' class='grid grid-cols-3 gap-2 text-brown font-normal text-sm'></div>
+        </div>
+      </MoneyCard>
     </section>
   </main>
 </Layout>
 <script>
-  import {salaryCOP, salaryEUR} from '../db/data';
+  import {salaryCOP, salaryEUR, currencies, ENDPOINT} from '@db/data';
 
   const locale = 'es-CO';
   const options = {
@@ -83,18 +79,70 @@ import MoneyCard from '../components/MoneyCard.astro';
   const formatterEUR = new Intl.NumberFormat(locale, optionsEUR);
   const salaryCop = document.querySelector('#salaryCop');
   const salaryEur = document.querySelector('#salaryEur');
+  const principalCurrency = document.querySelector('#principalCurrency');
+  const secondCurrency = document.querySelector('#secondCurrency');
 
   salaryEur.innerHTML = formatterEUR.format(salaryEUR);
   salaryCop.innerHTML = formatter.format(salaryCOP);
 
+  principalCurrency.innerHTML = currencies.EUR;
+  secondCurrency.innerHTML = currencies.COP;
+
   const result = document.querySelector('#result');
   const btn = document.querySelector('#converted');
+  const swap = document.querySelector('#swap');
   const input = document.querySelector('input');
+
+  const table = document.querySelector('#table');
+
   btn.addEventListener('click', e => {
     e.stopPropagation();
     const value = input.value;
     if (!value) return;
 
-    result.innerHTML = formatter.format((Number(value) / salaryEUR) * salaryCOP);
+    const from = principalCurrency.innerHTML;
+    const to = secondCurrency.innerHTML;
+
+    fetch(`${ENDPOINT}&from=${from}&to=${to}&amount=${value}&format=json`)
+      .then(response => response.json())
+      .then(resp => {
+        const {rates, amount} = resp;
+        const {rate, rate_for_amount} = rates[to];
+        const spanAmount = document.createElement('span');
+        spanAmount.innerHTML = from === currencies.EUR ? formatterEUR.format(amount) : formatter.format(amount);
+        const spanRate = document.createElement('span');
+        spanRate.innerHTML = rate;
+        const spanTotal = document.createElement('span');
+        spanTotal.innerHTML =
+          from === currencies.EUR ? formatter.format(rate_for_amount) : formatterEUR.format(rate_for_amount);
+        spanTotal.classList.add('font-medium', 'text-sm');
+        table.prepend(spanTotal);
+        table.prepend(spanRate);
+        table.prepend(spanAmount);
+      });
+
+    if (from === currencies.EUR) {
+      result.innerHTML = formatter.format((Number(value) / salaryEUR) * salaryCOP);
+    }
+
+    if (from === currencies.COP) {
+      result.innerHTML = formatter.format((Number(value) / salaryCOP) * salaryEUR);
+    }
+  });
+
+  swap.addEventListener('click', e => {
+    e.stopPropagation();
+    swap.classList.add('animate-spin');
+    setTimeout(() => {
+      swap.classList.remove('animate-spin');
+    }, 500);
+    if (principalCurrency.innerHTML === currencies.EUR) {
+      principalCurrency.innerHTML = currencies.COP;
+      secondCurrency.innerHTML = currencies.EUR;
+      return;
+    }
+
+    principalCurrency.innerHTML = currencies.EUR;
+    secondCurrency.innerHTML = currencies.COP;
   });
 </script>
